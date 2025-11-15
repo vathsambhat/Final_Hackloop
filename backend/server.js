@@ -7,12 +7,16 @@ const multer = require('multer');
 
 const app = express();
 
-// middleware
+// ===========================
+//       MIDDLEWARE
+// ===========================
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// env values
+// ===========================
+//       ENV VARIABLES
+// ===========================
 const PORT = process.env.PORT || 4000;
 const WEATHER_KEY = process.env.WEATHER_API_KEY || '';
 const DISEASE_KEY = process.env.DISEASE_API_KEY || '';
@@ -20,10 +24,14 @@ const DISEASE_KEY = process.env.DISEASE_API_KEY || '';
 console.log("Loaded WEATHER KEY:", WEATHER_KEY);
 console.log("Loaded DISEASE KEY:", DISEASE_KEY);
 
-// HEALTH CHECK
+// ===========================
+//        HEALTH CHECK
+// ===========================
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// SOIL ANALYSIS
+// ===========================
+//        SOIL ANALYSIS
+// ===========================
 function analyzeSoil(payload) {
   const ideal = {
     nitrogen: [80, 120],
@@ -34,7 +42,7 @@ function analyzeSoil(payload) {
     ph: [6.0, 7.5]
   };
 
-  const suggestions = {
+  const tips = {
     nitrogen: {
       low: 'Add compost or urea fertilizer.',
       high: 'Avoid nitrogen fertilizers for 2–3 weeks.',
@@ -67,23 +75,21 @@ function analyzeSoil(payload) {
     }
   };
 
-  const out = { crop: payload.crop, soil_type: payload.soil_type, analysis: {} };
+  const result = { crop: payload.crop, soil_type: payload.soil_type, analysis: {} };
 
-  function checkRange(key, value) {
+  for (let key in ideal) {
     const [low, high] = ideal[key];
-    if (value < low) return { status: "LOW", value, suggestion: suggestions[key].low };
-    if (value > high) return { status: "HIGH", value, suggestion: suggestions[key].high };
-    return { status: "OPTIMAL", value, suggestion: suggestions[key].optimal };
+    const value = Number(payload[key]);
+
+    if (value < low)
+      result.analysis[key] = { status: "LOW", value, suggestion: tips[key].low };
+    else if (value > high)
+      result.analysis[key] = { status: "HIGH", value, suggestion: tips[key].high };
+    else
+      result.analysis[key] = { status: "OPTIMAL", value, suggestion: tips[key].optimal };
   }
 
-  out.analysis.nitrogen = checkRange("nitrogen", Number(payload.nitrogen));
-  out.analysis.phosphorus = checkRange("phosphorus", Number(payload.phosphorus));
-  out.analysis.potassium = checkRange("potassium", Number(payload.potassium));
-  out.analysis.sulfur = checkRange("sulfur", Number(payload.sulfur));
-  out.analysis.organic_matter = checkRange("organic_matter", Number(payload.organic_matter));
-  out.analysis.ph = checkRange("ph", Number(payload.ph));
-
-  return out;
+  return result;
 }
 
 app.post('/api/soil', (req, res) => {
@@ -94,7 +100,9 @@ app.post('/api/soil', (req, res) => {
   }
 });
 
-// WEATHER API
+// ===========================
+//        WEATHER API
+// ===========================
 app.get('/api/weather', async (req, res) => {
   try {
     if (!WEATHER_KEY) {
@@ -102,22 +110,18 @@ app.get('/api/weather', async (req, res) => {
     }
 
     const { q, lat, lon } = req.query;
+
     let url = "";
 
-    if (q) {
+    if (q)
       url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(q)}&units=metric&appid=${WEATHER_KEY}`;
-    } else if (lat && lon) {
+    else if (lat && lon)
       url = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_KEY}`;
-    } else {
-      return res.status(400).json({ error: "City or coordinates are required" });
-    }
+    else
+      return res.status(400).json({ error: "City or coordinates required" });
 
     const response = await fetch(url);
     const data = await response.json();
-
-    if (!response.ok) {
-      return res.status(response.status).json(data);
-    }
 
     res.json(data);
 
@@ -126,62 +130,151 @@ app.get('/api/weather', async (req, res) => {
   }
 });
 
-
-// =====================================================
-// ✅ FIXED: DISEASE DETECTION FOR PLANT.ID v3
-// =====================================================
-// FIXED DISEASE DETECTION (Plant.id v3)
+// ===========================
+//   DISEASE DETECTION (Plant.id v3)
+// ===========================
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.post('/api/disease', upload.single("image"), async (req, res) => {
   try {
-    if (!DISEASE_KEY) {
-      return res.status(500).json({ error: "Disease API key not configured" });
-    }
+    if (!DISEASE_KEY)
+      return res.status(500).json({ error: "Disease API key missing" });
 
-    if (!req.file) {
+    if (!req.file)
       return res.status(400).json({ error: "No image uploaded" });
-    }
 
-    const base64Image = req.file.buffer.toString("base64");
+    const base64 = req.file.buffer.toString("base64");
 
-    const apiResponse = await fetch("https://plant.id/api/v3/health_assessment", {
+    // ---------------------------------------
+    // STEP 1 — VERIFY IT IS A PLANT
+    // ----------------------------------------
+    const verifyResponse = await fetch("https://plant.id/api/v3/identification", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "Api-Key": DISEASE_KEY
       },
       body: JSON.stringify({
-        images: [base64Image],
+        images: [base64],
+        classification_level: "all",
+        similar_images: true
+      })
+    });
+    // Read response text so we can show raw details when things go wrong
+    const verifyText = await verifyResponse.text();
+
+    if (!verifyResponse.ok) {
+      console.error('Plant.id verify returned non-OK status', verifyResponse.status, verifyText);
+      return res.status(502).json({
+        success: false,
+        error: 'Plant.id verify API returned an error',
+        status: verifyResponse.status,
+        details: verifyText
+      });
+    }
+
+    let verify;
+    try {
+      verify = JSON.parse(verifyText);
+    } catch (err) {
+      console.error('Failed to parse Plant.id verify JSON:', err, verifyText);
+      return res.status(502).json({
+        success: false,
+        error: 'Invalid verify JSON',
+        details: verifyText
+      });
+    }
+
+    // Plant.id responses can vary in shape; try several common fields
+    let isPlantProb = null;
+    if (verify && typeof verify === 'object') {
+      if (verify.result && typeof verify.result.is_plant_probability !== 'undefined')
+        isPlantProb = verify.result.is_plant_probability;
+      else if (verify.result && verify.result.is_plant && typeof verify.result.is_plant.probability !== 'undefined')
+        isPlantProb = verify.result.is_plant.probability;
+      else if (typeof verify.is_plant_probability !== 'undefined')
+        isPlantProb = verify.is_plant_probability;
+      else if (Array.isArray(verify.results) && verify.results[0] && typeof verify.results[0].is_plant_probability !== 'undefined')
+        isPlantProb = verify.results[0].is_plant_probability;
+      else if (Array.isArray(verify.result) && verify.result[0] && typeof verify.result[0].is_plant_probability !== 'undefined')
+        isPlantProb = verify.result[0].is_plant_probability;
+    }
+
+    if (isPlantProb === null) {
+      console.error('Unable to determine plant probability from verify response', JSON.stringify(verify));
+      return res.status(502).json({
+        success: false,
+        error: 'Could not determine plant probability from verification response',
+        details: verify
+      });
+    }
+
+    if (isPlantProb < 0.60) {
+      return res.json({
+        success: false,
+        message: '❌ This image is NOT a plant. Please upload a plant leaf.',
+        plant_probability: isPlantProb,
+        verify
+      });
+    }
+
+    // ---------------------------------------
+    // STEP 2 — DISEASE DETECTION
+    // ----------------------------------------
+    const diseaseResponse = await fetch("https://plant.id/api/v3/health_assessment", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Api-Key": DISEASE_KEY
+      },
+      body: JSON.stringify({
+        images: [base64],
         classification_level: "species",
         similar_images: true,
         health: "only"
       })
     });
+    const diseaseText = await diseaseResponse.text();
 
-    const text = await apiResponse.text();
-
-    try {
-      res.json(JSON.parse(text));
-    } catch {
-      res.status(500).json({
-        error: "Plant.id returned a non-JSON response",
-        message: text
+    if (!diseaseResponse.ok) {
+      console.error('Plant.id health_assessment returned non-OK status', diseaseResponse.status, diseaseText);
+      return res.status(502).json({
+        success: false,
+        error: 'Plant.id health_assessment API returned an error',
+        status: diseaseResponse.status,
+        details: diseaseText
       });
     }
+
+    let diseaseJSON;
+    try {
+      diseaseJSON = JSON.parse(diseaseText);
+    } catch (err) {
+      console.error('Failed to parse disease JSON:', err, diseaseText);
+      return res.status(502).json({
+        success: false,
+        error: 'Invalid disease JSON',
+        details: diseaseText
+      });
+    }
+
+    res.json(diseaseJSON);
 
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-
-// FRONTEND
+// ===========================
+//      FRONTEND FALLBACK
+// ===========================
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../frontend/index.html"));
 });
 
-// START SERVER
+// ===========================
+//        START SERVER
+// ===========================
 app.listen(PORT, () => {
   console.log("Farmer Assistant running on http://localhost:" + PORT);
 });

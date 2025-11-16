@@ -1,0 +1,17 @@
+# Node
+node_modules/
+npm-debug.log
+
+# Python virtualenv
+.venv/
+venv/
+
+# Local environment files
+.env
+
+# Editor folders
+.vscode/
+.DS_Store
+
+# Archives (keep in repo if you want) - optional
+# archive/

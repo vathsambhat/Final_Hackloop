@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Farmer Assistant - Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container" id="app">
+    <div class="header">
+      <div class="h1">Farmer Assistant</div>
+      <div id="user" class="small"></div>
+      <button id="headerLoginBtn" class="btn" style="margin-left:12px;" onclick="openLogin()">Login</button>
+    </div>
+
+    <div id="home">
+      <h3>Welcome</h3>
+      <p class="small">Choose a tool below</p>
+      <div class="big-icons">
+        <div class="card" onclick="show('soil')">
+          <div class="icon-large">🌱</div>
+          <h4>Soil</h4>
+          <div class="small">Analyze soil and get suggestions</div>
+        </div>
+        <div class="card" onclick="show('weather')">
+          <div class="icon-large">☁️</div>
+          <h4>Weather</h4>
+          <div class="small">5-day forecast for your area</div>
+        </div>
+        <div class="card" onclick="show('disease')">
+          <div class="icon-large">🪴</div>
+          <h4>Disease</h4>
+          <div class="small">Upload plant photo to detect disease</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="soil" style="display:none">
+      <button class="btn" onclick="back()">← Back</button>
+      <h3>Soil Analyzer</h3>
+      <div class="small">Enter soil test values to get AI-powered recommendations</div>
+      <div class="row">
+        <input id="crop" class="input" placeholder="Crop (e.g., tomato)">
+        <input id="location" class="input" placeholder="Location">
+      </div>
+      <div class="row">
+        <input id="moisture" class="input" type="number" placeholder="Moisture %" min="0" max="100">
+        <input id="temperature" class="input" type="number" placeholder="Temperature °C">
+      </div>
+      <div class="row">
+        <input id="nitrogen" class="input" type="number" placeholder="Nitrogen (mg/kg)">
+        <input id="phosphorus" class="input" type="number" placeholder="Phosphorus (mg/kg)">
+      </div>
+      <div class="row">
+        <input id="potassium" class="input" type="number" placeholder="Potassium (mg/kg)">
+        <input id="electrical_conductivity" class="input" type="number" placeholder="EC (dS/m)" step="0.1">
+      </div>
+      <div class="row">
+        <input id="organic_carbon" class="input" type="number" placeholder="Organic Carbon %" step="0.1">
+        <input id="ph" class="input" type="number" placeholder="Soil pH" min="0" max="14" step="0.1">
+      </div>
+      <button class="btn" onclick="analyzeSoil()">Analyze Soil</button>
+      <div id="soilResult" class="result-card"></div>
+    </div>
+
+    <div id="weather" style="display:none">
+      <button class="btn" onclick="back()">← Back</button>
+      <h3>Weather Forecast</h3>
+      <div class="small">Enter area name or use your location</div>
+      <input id="city" class="input" placeholder="City / village name">
+      <div style="margin:8px 0">
+        <button class="btn" onclick="getWeatherByCity()">Get Weather</button>
+        <button class="btn" onclick="useLocation()">Use My Location</button>
+      </div>
+      <div id="weatherResult" class="result-card"></div>
+    </div>
+
+    <div id="disease" style="display:none">
+      <button class="btn" onclick="back()">← Back</button>
+      <h3>Plant Disease Detection</h3>
+      <div class="small">Upload a clear photo of the affected leaf/plant</div>
+      <input type="file" id="plantImage" accept="image/*" class="input">
+      <div style="margin-top:8px">
+        <button class="btn" onclick="uploadDisease()">Detect Disease</button>
+      </div>
+      <div id="diseaseResult" class="result-card"></div>
+    </div>
+
+    <div class="footer">Made with ❤️ for farmers</div>
+  </div>
+
+  <!-- Login modal (appears on main/dashboard so users can login without leaving) -->
+  <div id="loginModal" style="display:none; position:fixed; left:0; top:0; right:0; bottom:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center;">
+    <div style="background:#fff; max-width:360px; width:90%; margin:auto; padding:16px; border-radius:8px; box-shadow:0 6px 20px rgba(0,0,0,0.2);">
+      <h3 style="margin-top:0">Login</h3>
+      <p class="small">Enter your name and phone to start your session.</p>
+      <input id="modal_name" class="input" placeholder="Your name">
+      <input id="modal_phone" class="input" placeholder="Phone number">
+      <div style="display:flex; gap:8px; margin-top:8px; justify-content:flex-end;">
+        <button class="btn" onclick="closeLogin()">Cancel</button>
+        <button class="btn" onclick="submitLoginModal()">Enter</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const userName = sessionStorage.getItem('farmer_name') || 'Farmer';
+document.getElementById('user').innerText = userName;
+
+function openLogin(){
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeLogin(){
+  const modal = document.getElementById('loginModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function submitLoginModal(){
+  const name = document.getElementById('modal_name').value.trim();
+  const phone = document.getElementById('modal_phone').value.trim();
+  if (!name || !phone) return alert('Please enter name and phone');
+  sessionStorage.setItem('farmer_name', name);
+  sessionStorage.setItem('farmer_phone', phone);
+  document.getElementById('user').innerText = name;
+  closeLogin();
+}
+
+function show(id){
+  document.getElementById('home').style.display = 'none';
+  ['soil','weather','disease'].forEach(x=> document.getElementById(x).style.display='none');
+  document.getElementById(id).style.display = 'block';
+}
+
+function back(){
+  document.getElementById('home').style.display = 'block';
+  ['soil','weather','disease'].forEach(x=> document.getElementById(x).style.display='none');
+}
+
+// Soil analyze
+async function analyzeSoil(){
+  const payload = {
+    crop_type: document.getElementById('crop').value || 'wheat',
+    location: document.getElementById('location').value || 'India',
+    moisture: parseFloat(document.getElementById('moisture').value) || 50,
+    nitrogen: parseFloat(document.getElementById('nitrogen').value) || 100,
+    phosphorus: parseFloat(document.getElementById('phosphorus').value) || 30,
+    potassium: parseFloat(document.getElementById('potassium').value) || 120,
+    ph: parseFloat(document.getElementById('ph').value) || 7.0,
+    temperature: parseFloat(document.getElementById('temperature').value) || 25,
+    electrical_conductivity: parseFloat(document.getElementById('electrical_conductivity').value) || 1.0,
+    organic_carbon: parseFloat(document.getElementById('organic_carbon').value) || 2.0
+  };
+  const out = document.getElementById('soilResult');
+  out.innerText = 'Analyzing with AI...';
+  try {
+    const res = await fetch('/api/soil', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
+    const data = await res.json();
+    renderSoil(data);
+  } catch(e){
+    out.innerText = 'Error: '+e.message;
+  }
+}
+
+function renderSoil(data){
+  const out = document.getElementById('soilResult');
+  if (data.error){ out.innerText = 'Error: ' + data.error; return; }
+  
+  let html = `<strong>🌾 AI Analysis Result</strong><hr>`;
+  html += `<strong>Action:</strong> ${data.action}<br>`;
+  html += `<strong>Priority:</strong> ${data.priority}<br>`;
+  html += `<strong>Confidence:</strong> ${(data.confidence * 100).toFixed(0)}%<br>`;
+  html += `<strong>Reasoning:</strong> ${data.reasoning}<hr>`;
+  
+  html += `<strong>📋 Recommendations:</strong><ul>`;
+  (data.recommendations || []).forEach(r => html += `<li>${r}</li>`);
+  html += `</ul>`;
+  
+  html += `<strong>🇮🇳 सुझाव (Hindi):</strong><ul>`;
+  (data.recommendations_hindi || []).forEach(r => html += `<li>${r}</li>`);
+  html += `</ul>`;
+  
+  html += `<hr><strong>Next Check:</strong> ${data.next_check_hours} hours`;
+  
+  out.innerHTML = html;
+}
+
+// Weather
+async function getWeatherByCity(){
+  const city = document.getElementById('city').value.trim();
+  if (!city) return alert('Enter city name');
+  const out = document.getElementById('weatherResult'); out.innerText = 'Loading...';
+  try {
+    const res = await fetch('/api/weather?q=' + encodeURIComponent(city));
+    const data = await res.json();
+    renderWeather(data);
+  } catch(e){ out.innerText = 'Error: '+e.message; }
+}
+
+function renderWeather(data){
+  const out = document.getElementById('weatherResult');
+  if (data.error) { out.innerText = JSON.stringify(data); return; }
+  const list = data.list || [];
+  let html = `<strong>Location:</strong> ${data.city?.name || ''}, ${data.city?.country || ''}<hr>`;
+  const days = {};
+  list.forEach(item=>{
+    const d = new Date(item.dt*1000).toLocaleDateString();
+    days[d] = days[d] || [];
+    days[d].push(item);
+  });
+  let count = 0;
+  for (const day of Object.keys(days)){
+    if (count>=5) break;
+    const arr = days[day];
+    const mid = arr[Math.floor(arr.length/2)];
+    html += `<div><strong>${day}:</strong> ${mid.weather[0].main}, ${mid.main.temp}°C, Hum ${mid.main.humidity}%</div>`;
+    count++;
+  }
+  out.innerHTML = html;
+}
+
+// Geolocation
+function useLocation(){
+  if (!navigator.geolocation) return alert('Geolocation not supported');
+  const out = document.getElementById('weatherResult'); out.innerText = 'Getting location...';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    const res = await fetch(`/api/weather?lat=${lat}&lon=${lon}`);
+    const data = await res.json();
+    renderWeather(data);
+  }, err=>{ alert('Location failed: '+err.message); });
+}
+
+// Disease upload
+async function uploadDisease(){
+  const file = document.getElementById('plantImage').files[0];
+  if (!file) return alert('Please choose an image');
+  const out = document.getElementById('diseaseResult'); out.innerText = 'Uploading...';
+  const fd = new FormData();
+  fd.append('image', file);
+  try {
+    const res = await fetch('/api/disease', { method: 'POST', body: fd });
+    const data = await res.json();
+    renderDisease(data);
+  } catch(e){
+    out.innerText = 'Error: ' + e.message;
+  }
+}
+
+function renderDisease(data){
+  const out = document.getElementById('diseaseResult');
+  if (data.error) { out.innerText = 'Error: ' + data.error; return; }
+  if (!data.result || !data.result.disease || !data.result.disease.suggestions) {
+    out.innerText = 'No disease detected or invalid response';
+    return;
+  }
+  const diseases = data.result.disease.suggestions;
+  let html = '<strong>Disease Detection Results:</strong><hr>';
+  diseases.forEach((disease, idx) => {
+    const percent = (disease.probability * 100).toFixed(2);
+    html += `<div><strong>${idx + 1}. ${disease.name}</strong><br>Probability: ${percent}%</div><hr>`;
+  });
+  out.innerHTML = html;
+}
+</script>
+</body>
+</html>

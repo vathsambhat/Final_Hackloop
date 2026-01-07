@@ -11,7 +11,15 @@ Soil Agentic AI System (Keyless Silent Mode)
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Optional, List, Dict
-import json, requests
+import json
+
+# `requests` is optional; if missing the script falls back to the rule engine
+try:
+    import requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    requests = None
+    REQUESTS_AVAILABLE = False
 
 # -------------------------------------------------
 # CONFIGURE API KEYS HERE (optional)
@@ -61,6 +69,7 @@ class AIDecision:
 
 def call_openai(prompt):
     if not OPENAI_KEY: return None
+    if not REQUESTS_AVAILABLE: return None
     try:
         r = requests.post(
             "https://api.openai.com/v1/chat/completions",
@@ -73,6 +82,7 @@ def call_openai(prompt):
 
 def call_claude(prompt):
     if not ANTHROPIC_KEY: return None
+    if not REQUESTS_AVAILABLE: return None
     try:
         r = requests.post(
             "https://api.anthropic.com/v1/messages",
@@ -85,6 +95,7 @@ def call_claude(prompt):
 
 def call_gemini(prompt):
     if not GEMINI_KEY: return None
+    if not REQUESTS_AVAILABLE: return None
     try:
         url=f"https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key={GEMINI_KEY}"
         r=requests.post(url,json={"contents":[{"parts":[{"text":prompt}]}]})
@@ -94,6 +105,7 @@ def call_gemini(prompt):
 
 def call_local(prompt):
     if not USE_LOCAL_LLM: return None
+    if not REQUESTS_AVAILABLE: return None
     try:
         r = requests.post("http://localhost:11434/api/generate",
                           json={"model":"llama3","prompt":prompt})
@@ -197,6 +209,10 @@ Response format:
 
 if __name__ == "__main__":
     print("\n🌾 Soil AI Assistant (No Key Needed) 🌾\n")
+
+    if not REQUESTS_AVAILABLE:
+        print("Notice: Python package 'requests' is not installed. LLM API calls will be disabled and the tool will use the local rule-based fallback.")
+        print("To enable LLM providers install requests:  python -m pip install requests\n")
 
     def num(q): return float(input(q))
 

@@ -58,7 +58,10 @@
       <button class="btn" onclick="back()">← Back</button>
       <h3>Soil Analyzer</h3>
       <div class="small">Enter soil test values (N, P, K in mg/kg; organic matter in %; pH)</div>
-      <input id="crop" class="input" placeholder="Crop (e.g., tomato)">
+      <div style="position:relative">
+        <input id="crop" class="input" placeholder="Crop (e.g., tomato)" autocomplete="off">
+        <div id="crop-suggestions" class="suggestions"></div>
+      </div>
       <select id="soil_type" class="input">
         <option value="red">Red</option>
         <option value="black">Black</option>
@@ -166,6 +169,41 @@ async function analyzeSoil(){
     out.innerText = 'Error: '+e.message;
   }
 }
+
+// --------- Crop autocomplete (queries backend /api/crops) ---------
+function debounce(fn, wait){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=>fn(...args), wait); }; }
+
+async function fetchCropSuggestions(prefix){
+  if(!prefix || prefix.trim().length === 0) { renderCropSuggestions([]); return; }
+  try{
+    const res = await fetch('/api/crops?prefix=' + encodeURIComponent(prefix));
+    const data = await res.json();
+    if(data && Array.isArray(data.suggestions)) renderCropSuggestions(data.suggestions);
+    else renderCropSuggestions([]);
+  }catch(e){ renderCropSuggestions([]); }
+}
+
+function renderCropSuggestions(list){
+  const container = document.getElementById('crop-suggestions');
+  container.innerHTML = '';
+  if(!list || list.length === 0) return;
+  const ul = document.createElement('div'); ul.className = 'suggestions-list';
+  list.forEach(item=>{
+    const div = document.createElement('div'); div.className = 'suggestion-item'; div.innerText = item; 
+    div.addEventListener('click', ()=>{ document.getElementById('crop').value = item; container.innerHTML=''; });
+    ul.appendChild(div);
+  });
+  container.appendChild(ul);
+}
+
+const debouncedFetch = debounce((e)=> fetchCropSuggestions(e.target.value), 220);
+document.getElementById('crop').addEventListener('input', debouncedFetch);
+document.addEventListener('click', function(e){
+  const cs = document.getElementById('crop-suggestions');
+  if(!cs) return;
+  if(e.target.id === 'crop' || cs.contains(e.target)) return; // keep open
+  cs.innerHTML = '';
+});
 
 function renderSoil(data){
   const out = document.getElementById('soilResult');

@@ -32,6 +32,35 @@ app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 // ===========================
 //        SOIL ANALYSIS
 // ===========================
+// Load crop list from project root `crops.json` if available; fallback to small built-in list
+const fs = require('fs');
+const PATH_CROPS = path.join(__dirname, '..', 'crops.json');
+let VALID_CROPS = [ 'rice','wheat','maize','corn','sugarcane','cotton','soybean','potato','tomato','banana','millet','barley','groundnut','pea','lentil','mustard','sunflower','chili','onion','cauliflower','brinjal','grapes','apple','orange','mango','tea','coffee' ];
+try{
+  if(fs.existsSync(PATH_CROPS)){
+    const raw = fs.readFileSync(PATH_CROPS, 'utf8');
+    const arr = JSON.parse(raw);
+    if(Array.isArray(arr) && arr.length) VALID_CROPS = arr.map(x=>x.toString());
+  }
+}catch(e){ console.error('Failed to load crops.json:', e.message); }
+
+function suggestCrops(prefix, limit = 20) {
+  if (!prefix) return [];
+  const p = prefix.trim().toLowerCase();
+  return VALID_CROPS.filter(c => c.toLowerCase().startsWith(p)).slice(0, limit);
+}
+
+// Crop suggestions endpoint
+app.get('/api/crops', (req, res) => {
+  try {
+    const prefix = (req.query.prefix || '').toString();
+    const results = suggestCrops(prefix, 50);
+    res.json({ suggestions: results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 function analyzeSoil(payload) {
   const ideal = {
     nitrogen: [80, 120],
@@ -94,6 +123,17 @@ function analyzeSoil(payload) {
 
 app.post('/api/soil', (req, res) => {
   try {
+    const crop = (req.body.crop || '').toString().trim();
+    // Validate crop server-side to avoid accepting arbitrary names from frontend
+    if (!crop || !VALID_CROPS.map(c=>c.toLowerCase()).includes(crop.toLowerCase())) {
+      const suggestions = suggestCrops(crop);
+      return res.status(400).json({
+        error: 'INVALID_CROP',
+        message: `Crop '${crop}' is not recognized. Enter a valid crop name.`,
+        suggestions
+      });
+    }
+
     res.json(analyzeSoil(req.body));
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,0 +1,790 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AgroMind - Farmer Dashboard</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: #f5f7fa;
+      color: #1a202c;
+    }
+
+    .dashboard-wrapper {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+
+    /* ===== SIDEBAR ===== */
+    .sidebar {
+      background: linear-gradient(180deg, #0f766e 0%, #14b8a6 100%);
+      padding: 24px 0;
+      box-shadow: 2px 0 8px rgba(0, 0, 0, 0.08);
+      position: fixed;
+      height: 100vh;
+      width: 260px;
+      overflow-y: auto;
+    }
+
+    .sidebar-header {
+      padding: 0 20px 30px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .sidebar-logo {
+      font-size: 28px;
+      color: white;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .sidebar-logo span {
+      font-size: 32px;
+    }
+
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 12px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: rgba(255, 255, 255, 0.8);
+      font-weight: 500;
+      border: none;
+      background: none;
+      font-size: 15px;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+    }
+
+    .nav-item.active {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+      border-left: 3px solid white;
+      padding-left: 13px;
+    }
+
+    .nav-icon {
+      font-size: 20px;
+      width: 24px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      position: absolute;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      padding: 0 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      padding-top: 12px;
+    }
+
+    .logout-btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.15);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* ===== MAIN CONTENT ===== */
+    .main-content {
+      margin-left: 260px;
+      background: #f5f7fa;
+    }
+
+    /* ===== TOP HEADER ===== */
+    .top-header {
+      background: white;
+      padding: 24px 40px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 30px;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .header-item {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .header-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #718096;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #1a202c;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .header-icon {
+      font-size: 18px;
+    }
+
+    /* ===== PAGE TITLE ===== */
+    .page-title {
+      padding: 40px 40px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .page-title h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f766e;
+    }
+
+    /* ===== DASHBOARD GRID ===== */
+    .dashboard-grid {
+      padding: 20px 40px 40px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 24px;
+    }
+
+    /* ===== CARDS ===== */
+    .dashboard-card {
+      background: white;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+      transition: all 0.3s ease;
+      border: 1px solid #e2e8f0;
+    }
+
+    .dashboard-card:hover {
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+      transform: translateY(-4px);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #f0f4f8;
+    }
+
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a202c;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-icon {
+      font-size: 24px;
+    }
+
+    /* ===== SOIL CARD ===== */
+    .soil-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .metric {
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      padding: 16px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid #bbeef6;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #4b5563;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .metric-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: #0f766e;
+      margin-bottom: 6px;
+    }
+
+    .metric-status {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .status-optimal {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-low {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .metric.low {
+      background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+      border-color: #fbbf24;
+    }
+
+    .metric.high {
+      background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+      border-color: #f87171;
+    }
+
+    /* ===== WEATHER CARD ===== */
+    .forecast-container {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+    }
+
+    .forecast-day {
+      flex: 0 0 100px;
+      background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+      padding: 12px;
+      border-radius: 10px;
+      text-align: center;
+      border: 1px solid #93c5fd;
+    }
+
+    .forecast-day-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #1e40af;
+      margin-bottom: 6px;
+    }
+
+    .forecast-icon {
+      font-size: 24px;
+      margin: 6px 0;
+    }
+
+    .forecast-temp {
+      font-size: 14px;
+      font-weight: 700;
+      color: #1e40af;
+    }
+
+    .weather-alerts {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #92400e;
+    }
+
+    /* ===== CROP CARD ===== */
+    .crop-info {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .crop-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+
+    .crop-label {
+      color: #718096;
+      font-weight: 600;
+    }
+
+    .crop-value {
+      color: #1a202c;
+      font-weight: 700;
+    }
+
+    .risk-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .risk-bar-fill {
+      flex: 1;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .risk-bar-progress {
+      height: 100%;
+      background: linear-gradient(90deg, #fbbf24, #f87171);
+      width: 65%;
+    }
+
+    .risk-text {
+      font-size: 12px;
+      font-weight: 600;
+      color: #d97706;
+    }
+
+    /* ===== HISTORY CARD ===== */
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f9fafb;
+      border-radius: 8px;
+      border-left: 3px solid #0f766e;
+    }
+
+    .history-icon {
+      font-size: 20px;
+      min-width: 24px;
+    }
+
+    .history-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a202c;
+    }
+
+    .history-date {
+      font-size: 11px;
+      color: #718096;
+    }
+
+    /* ===== BUTTONS ===== */
+    .card-button {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(90deg, #0f766e, #14b8a6);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .card-button:hover {
+      box-shadow: 0 8px 20px rgba(15, 118, 110, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .card-button-secondary {
+      background: white;
+      color: #0f766e;
+      border: 2px solid #0f766e;
+    }
+
+    .card-button-secondary:hover {
+      background: #f0fdf4;
+    }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #718096;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+    }
+
+    .empty-state-text {
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .top-header {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .dashboard-wrapper {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: fixed;
+        left: -260px;
+        z-index: 1000;
+        transition: left 0.3s ease;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .main-content {
+        margin-left: 0;
+      }
+
+      .top-header {
+        grid-template-columns: 1fr;
+        padding: 16px 20px;
+      }
+
+      .page-title {
+        padding: 20px 20px 10px;
+      }
+
+      .dashboard-grid {
+        padding: 20px;
+      }
+
+      .soil-metrics {
+        grid-template-columns: 1fr;
+      }
+
+      .forecast-container {
+        grid-template-columns: repeat(auto-scroll, 100px);
+      }
+
+      .top-header {
+        gap: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-wrapper">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">
+          <span>🧠</span>
+          <span style="font-size: 16px;">AgroMind</span>
+        </div>
+      </div>
+
+      <div class="sidebar-nav">
+        <button class="nav-item active" onclick="switchTab('dashboard')">
+          <span class="nav-icon">📊</span>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('soil')">
+          <span class="nav-icon">🌱</span>
+          <span>Soil Analysis</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('weather')">
+          <span class="nav-icon">☀️</span>
+          <span>Weather</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('disease')">
+          <span class="nav-icon">🪴</span>
+          <span>Disease Detection</span>
+        </button>
+        <button class="nav-item" onclick="switchTab('history')">
+          <span class="nav-icon">📋</span>
+          <span>History</span>
+        </button>
+      </div>
+
+      <div class="sidebar-footer">
+        <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+      </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-content">
+      <!-- TOP HEADER -->
+      <div class="top-header">
+        <div class="header-item">
+          <span class="header-label">👤 Farmer</span>
+          <span class="header-value" id="farmHeader">yuvi</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">🏠 Farm Location</span>
+          <span class="header-value">Maharashtra, India</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">🌾 Active Crop</span>
+          <span class="header-value">Sugarcane</span>
+        </div>
+        <div class="header-item">
+          <span class="header-label">🍂 Season</span>
+          <span class="header-value">Winter</span>
+        </div>
+      </div>
+
+      <!-- PAGE TITLE -->
+      <div class="page-title">
+        <h1>📊 Dashboard</h1>
+      </div>
+
+      <!-- DASHBOARD GRID -->
+      <div class="dashboard-grid">
+        
+        <!-- SOIL HEALTH CARD -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">🌱</span>
+              Soil Health
+            </div>
+          </div>
+
+          <div class="soil-metrics">
+            <div class="metric optimal">
+              <div class="metric-label">pH</div>
+              <div class="metric-value">6.8</div>
+              <span class="metric-status status-optimal">Optimal</span>
+            </div>
+            <div class="metric optimal">
+              <div class="metric-label">Nitrogen (N)</div>
+              <div class="metric-value">95</div>
+              <span class="metric-status status-optimal">Optimal</span>
+            </div>
+            <div class="metric low">
+              <div class="metric-label">Phosphorus (P)</div>
+              <div class="metric-value">15</div>
+              <span class="metric-status status-low">Low</span>
+            </div>
+            <div class="metric optimal">
+              <div class="metric-label">Potassium (K)</div>
+              <div class="metric-value">125</div>
+              <span class="metric-status status-optimal">Optimal</span>
+            </div>
+          </div>
+
+          <p style="font-size: 13px; color: #718096; margin-bottom: 16px;">Last test: 5 days ago</p>
+          <button class="card-button" onclick="switchTab('soil')">🔬 Analyze Soil</button>
+        </div>
+
+        <!-- WEATHER CARD -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">☀️</span>
+              Weather Forecast
+            </div>
+          </div>
+
+          <div class="forecast-container">
+            <div class="forecast-day">
+              <div class="forecast-day-name">Today</div>
+              <div class="forecast-icon">🌞</div>
+              <div class="forecast-temp">28°C</div>
+            </div>
+            <div class="forecast-day">
+              <div class="forecast-day-name">Tomorrow</div>
+              <div class="forecast-icon">⛅</div>
+              <div class="forecast-temp">26°C</div>
+            </div>
+            <div class="forecast-day">
+              <div class="forecast-day-name">Day 3</div>
+              <div class="forecast-icon">🌧️</div>
+              <div class="forecast-temp">22°C</div>
+            </div>
+            <div class="forecast-day">
+              <div class="forecast-day-name">Day 4</div>
+              <div class="forecast-icon">🌧️</div>
+              <div class="forecast-temp">20°C</div>
+            </div>
+            <div class="forecast-day">
+              <div class="forecast-day-name">Day 5</div>
+              <div class="forecast-icon">⛅</div>
+              <div class="forecast-temp">24°C</div>
+            </div>
+          </div>
+
+          <div class="weather-alerts">
+            <strong>⚠️ Rainfall Alert:</strong> 45mm expected in 2 days
+          </div>
+
+          <button class="card-button" onclick="switchTab('weather')">📍 View Forecast</button>
+        </div>
+
+        <!-- CROP HEALTH CARD -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">🌾</span>
+              Crop Health
+            </div>
+          </div>
+
+          <div class="crop-info">
+            <div class="crop-item">
+              <span class="crop-label">Crop Name</span>
+              <span class="crop-value">Sugarcane</span>
+            </div>
+            <div class="crop-item">
+              <span class="crop-label">Growth Stage</span>
+              <span class="crop-value">Vegetative (45 days)</span>
+            </div>
+            <div class="crop-item">
+              <span class="crop-label">Health Status</span>
+              <span class="crop-value" style="color: #16a34a;">Excellent</span>
+            </div>
+          </div>
+
+          <div style="margin-top: 16px;">
+            <span style="font-size: 12px; font-weight: 600; color: #718096;">Disease Risk Level</span>
+            <div class="risk-bar">
+              <div class="risk-bar-fill">
+                <div class="risk-bar-progress"></div>
+              </div>
+              <span class="risk-text">Moderate</span>
+            </div>
+          </div>
+
+          <button class="card-button" onclick="switchTab('disease')">📷 Upload Photo</button>
+        </div>
+
+        <!-- HISTORY CARD -->
+        <div class="dashboard-card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-icon">📋</span>
+              Recent Activity
+            </div>
+          </div>
+
+          <div class="history-list">
+            <div class="history-item">
+              <span class="history-icon">🌱</span>
+              <div class="history-content">
+                <div class="history-title">Soil Analysis</div>
+                <div class="history-date">5 days ago</div>
+              </div>
+            </div>
+            <div class="history-item">
+              <span class="history-icon">📷</span>
+              <div class="history-content">
+                <div class="history-title">Disease Scan</div>
+                <div class="history-date">8 days ago</div>
+              </div>
+            </div>
+            <div class="history-item">
+              <span class="history-icon">☀️</span>
+              <div class="history-content">
+                <div class="history-title">Weather Check</div>
+                <div class="history-date">Today</div>
+              </div>
+            </div>
+          </div>
+
+          <button class="card-button card-button-secondary" onclick="switchTab('history')">View All</button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    // Get logged-in user
+    function init() {
+      const user = JSON.parse(sessionStorage.getItem('fa_user'));
+      if (!user) {
+        window.location = 'login.html';
+      } else {
+        document.getElementById('farmHeader').textContent = user.username;
+      }
+    }
+
+    function logout() {
+      sessionStorage.clear();
+      window.location = 'index.html';
+    }
+
+    function switchTab(tab) {
+      // Update active nav item
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      event.target.closest('.nav-item').classList.add('active');
+      
+      // Show/hide content
+      console.log('Switched to:', tab);
+    }
+
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>
